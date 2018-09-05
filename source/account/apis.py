@@ -11,12 +11,14 @@ from tastypie.exceptions import BadRequest
 from tastypie.utils import trailing_slash
 from tastypie import fields
 from .models import Profile
+from .authorization import UserObjectsOnlyAuthorization
+from .validation import UserProfileValidation
 
 class UserResource(ModelResource):
     # profile = fields.ForeignKey(ProfileResource, 'profile', full=True)
     class Meta:
         queryset = User.objects.all()
-        fields = ['username', 'first_name', 'last_name']
+        fields = ['id', 'username', 'first_name', 'last_name']
         excludes = ['email', 'password', 'is_superuser']
         resource_name = 'auth/users'
         include_resource_uri = False
@@ -25,16 +27,16 @@ class UserResource(ModelResource):
 
 
 class ProfileResource(ModelResource):
-    user = fields.ToOneField(UserResource, attribute='user', null=True)
-    first_name = fields.CharField(attribute='user__first_name', null=True)
-    last_name = fields.CharField(attribute='user__last_name', null=True)
-    email = fields.CharField(attribute='user__email', null=True)
+    user = fields.ForeignKey(UserResource, attribute='user', full=True)
+
     class Meta:
         queryset = Profile.objects.all()
         resource_name = 'user-profile'
+        fields = ['id', 'other_name', 'birthday', 'address', 'phone_number',
+                  'photo_url', 'user']
         include_resource_uri = False
         authentication = ApiKeyAuthentication()
-        authorization = Authorization()
+        authorization = UserObjectsOnlyAuthorization()
 
 
 class AuthenticationResource(ModelResource):
@@ -46,6 +48,7 @@ class AuthenticationResource(ModelResource):
         authentication = Authentication()
         authorization = Authorization()
         always_return_data = True
+        validation = UserProfileValidation()
 
     def prepend_urls(self):
         return [
@@ -70,6 +73,8 @@ class AuthenticationResource(ModelResource):
                 login(request, user)
                 return self.create_response(request, {
                     'success': True,
+                    'id':user.id,
+                    'username':user.username,
                     'api_key': user.api_key.key
                 })
             else:
@@ -97,27 +102,41 @@ class AuthenticationResource(ModelResource):
         self.method_check(request, allowed=['post'])
         data = self.deserialize(request, request.body,
                                 format=request.META.get('CONTENT_TYPE', 'application/join'))
+        # Data of Account
         username = data.get('username', '')
         password = data.get('password', '')
         email = data.get('email', '')
         first_name = data.get('first_name', '')
         last_name = data.get('last_name', '')
+        
+        # Data of Profile (unnecessary)
+        other_name = data.get('other_name', '')
+        address = data.get('address', '')
+        birthday = data.get('birthday')
+        phone_number = data.get('phone_number', '')
+        photo_url = data.get('photo_url', '')
+
         # Validate in here. Update later...
+
 
         if User.objects.filter(username=username).exists():
             raise BadRequest('Username already exists')
+        if User.objects.filter(email=email).exists():
+            raise BadRequest('This email already has been registered by another account')
         else:
             User.objects.create_user(username=username, email=email, password=password,
                                      first_name=first_name, last_name=last_name)
             user = authenticate(username=username, password=password)
-            print(user)
             login(request, user)
             if user is not None:
-                Profile.objects.create(user_id=user.id)
+                Profile.objects.create(user_id=user.id, other_name=other_name, address=address,
+                                       birthday=birthday, phone_number=phone_number, photo_url=photo_url)
             else:
                 raise BadRequest("Can't create userprofile")
 
         return self.create_response(request, {
             'success': True,
+            'id':user.id,
+            'username':user.username,
             'api_key': user.api_key.key
         })

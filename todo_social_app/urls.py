@@ -16,12 +16,13 @@ Including another URLconf
 from django.contrib import admin
 from django.conf.urls import include, url
 from tastypie.api import Api
-from source.account.apis import AuthenticationResource
+from source.account.apis import AuthenticationResource, ProfileResource
 
 v1_api = Api(api_name='v1')
 
 # Api for User
 v1_api.register(AuthenticationResource())
+v1_api.register(ProfileResource())
 
 urlpatterns = [
     url(r'admin/', admin.site.urls),
