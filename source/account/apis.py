@@ -1,12 +1,11 @@
+import re
 from django.conf.urls import url
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from django.db import IntegrityError, transaction
-from tastypie.models import ApiKey
 from tastypie.resources import ModelResource
 from tastypie.http import HttpUnauthorized, HttpForbidden
 from tastypie.authorization import Authorization
-from tastypie.authentication import Authentication, BasicAuthentication, ApiKeyAuthentication
+from tastypie.authentication import Authentication, ApiKeyAuthentication
 from tastypie.exceptions import BadRequest
 from tastypie.utils import trailing_slash
 from tastypie import fields
@@ -103,25 +102,35 @@ class AuthenticationResource(ModelResource):
         data = self.deserialize(request, request.body,
                                 format=request.META.get('CONTENT_TYPE', 'application/join'))
         # Data of Account
-        username = data.get('username', '')
-        password = data.get('password', '')
-        email = data.get('email', '')
-        first_name = data.get('first_name', '')
-        last_name = data.get('last_name', '')
-        
+        username = data.get('username', '').strip()
+        password = data.get('password', '').strip()
+        email = data.get('email', '').strip()
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+
         # Data of Profile (unnecessary)
-        other_name = data.get('other_name', '')
-        address = data.get('address', '')
+        other_name = data.get('other_name', '').strip()
+        address = data.get('address', '').strip()
         birthday = data.get('birthday')
-        phone_number = data.get('phone_number', '')
-        photo_url = data.get('photo_url', '')
+        phone_number = data.get('phone_number', '').strip()
+        photo_url = data.get('photo_url', '').strip()
 
-        # Validate in here. Update later...
-
-
+        # Validate in here.
+        # Valdate username
+        if bool(re.match('^[a-zA-Z0-9]+$', username)) is False:
+            raise BadRequest('Username invalid')
         if User.objects.filter(username=username).exists():
             raise BadRequest('Username already exists')
-        if User.objects.filter(email=email).exists():
+
+        # Validate password
+        if len(password) < 8  or password.isnumeric() or username == password:
+            raise BadRequest('Password invalid')
+
+        # Validate email
+        match = re.match('^[_a-z0-9-]+(\\.[_a-z0-9-]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,4})$', email)
+        if match is None:
+            raise BadRequest('Email invalid')
+        elif User.objects.filter(email=email).exists():
             raise BadRequest('This email already has been registered by another account')
         else:
             User.objects.create_user(username=username, email=email, password=password,
