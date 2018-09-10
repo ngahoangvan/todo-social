@@ -11,7 +11,7 @@ Run Project (Using Visual Studio Code)
 - Clone Project
 - Open project, then open terminal and work as follows
     - manager.py makemigrations (create migrations)
-    - manager.py migrate (create table based on migrations)
+    - manager.py migrate (create table based on migrations, if it not work, config in file setting.py)
     - manager.py createsuperuser (create admin user)
     - manager.py runserver (start server, default: http://127.0.0.1:8000)
 
