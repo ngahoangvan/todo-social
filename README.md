@@ -6,6 +6,15 @@ Core
 * Django 2.0.5
 * Tastypie
 
+Run Project (Using Visual Studio Code)
+---
+- Clone Project
+- Open project, then open terminal and work as follows
+    - manager.py makemigrations (create migrations)
+    - manager.py migrate (create table based on migrations)
+    - manager.py createsuperuser (create admin user)
+    - manager.py runserver (start server, default: http://127.0.0.1:8000)
+
 API Authentication
 ---
 * Sign In (Post): http://127.0.0.1:8000/api/v1/authentication/sign_in/
