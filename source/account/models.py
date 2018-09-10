@@ -15,13 +15,8 @@ class Profile(models.Model):
     photo_url = models.CharField(max_length=255, blank=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
-    @property
-    def full_name(self):
-        "Full name of user"
-        return '%s %s' % (self.user.first_name, self.user.last_name)
-
     def __str__(self):
-        return self.full_name
+        return self.user.get_full_name()
 
 
 class Relationship(models.Model):

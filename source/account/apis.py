@@ -2,6 +2,9 @@ import re
 from django.conf.urls import url
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.core.validators import validate_email
 from tastypie.resources import ModelResource
 from tastypie.http import HttpUnauthorized, HttpForbidden
 from tastypie.authorization import Authorization
@@ -14,7 +17,6 @@ from .authorization import UserObjectsOnlyAuthorization
 from .validation import UserProfileValidation
 
 class UserResource(ModelResource):
-    # profile = fields.ForeignKey(ProfileResource, 'profile', full=True)
     class Meta:
         queryset = User.objects.all()
         fields = ['id', 'username', 'first_name', 'last_name']
@@ -37,6 +39,14 @@ class ProfileResource(ModelResource):
         authentication = ApiKeyAuthentication()
         authorization = UserObjectsOnlyAuthorization()
 
+    def hydrate_user(self, bundle):
+        user = User.objects.get(id=bundle.obj.user_id)
+        user.first_name = bundle.data['first_name']
+        user.last_name = bundle.data['last_name']
+        user.save()
+        return super(ProfileResource, self).hydrate(bundle)
+
+
 
 class AuthenticationResource(ModelResource):
     class Meta:
@@ -51,12 +61,22 @@ class AuthenticationResource(ModelResource):
 
     def prepend_urls(self):
         return [
-            url(r"^(?P<resource_name>%s)/sign_in%s$" % (self._meta.resource_name, trailing_slash()),
+            # sign_in
+            url(r"^(?P<resource_name>%s)/sign_in%s$" %
+                (self._meta.resource_name, trailing_slash()),
                 self.wrap_view('sign_in'), name="api_sign_in"),
-            url(r"^(?P<resource_name>%s)/sign_out%s$" % (self._meta.resource_name, trailing_slash()),
+            # sign_out
+            url(r"^(?P<resource_name>%s)/sign_out%s$" %
+                (self._meta.resource_name, trailing_slash()),
                 self.wrap_view('sign_out'), name="api_sign_out"),
-            url(r"^(?P<resource_name>%s)/sign_up%s$" % (self._meta.resource_name, trailing_slash()),
+            # sign_up
+            url(r"^(?P<resource_name>%s)/sign_up%s$" %
+                (self._meta.resource_name, trailing_slash()),
                 self.wrap_view('sign_up'), name="api_sign_up"),
+            # recover password (InProgress)
+            url(r"^(?P<resource_name>%s)/recover_password%s$" %
+                (self._meta.resource_name, trailing_slash()),
+                self.wrap_view('recover_password'), name="api_recover_password"),
         ]
 
     def sign_in(self, request, **kwargs):
@@ -115,22 +135,18 @@ class AuthenticationResource(ModelResource):
         phone_number = data.get('phone_number', '').strip()
         photo_url = data.get('photo_url', '').strip()
 
-        # Validate in here.
         # Valdate username
-        if bool(re.match('^[a-zA-Z0-9]+$', username)) is False:
+        if bool(re.match(r'^[\w.@+-]+$', username)) is False:
             raise BadRequest('Username invalid')
-        if User.objects.filter(username=username).exists():
+        elif User.objects.filter(username=username).exists():
             raise BadRequest('Username already exists')
 
         # Validate password
-        if len(password) < 8  or password.isnumeric() or username == password:
-            raise BadRequest('Password invalid')
+        validate_password(password)
 
         # Validate email
-        match = re.match('^[_a-z0-9-]+(\\.[_a-z0-9-]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,4})$', email)
-        if match is None:
-            raise BadRequest('Email invalid')
-        elif User.objects.filter(email=email).exists():
+        validate_email(email)
+        if User.objects.filter(email=email).exists():
             raise BadRequest('This email already has been registered by another account')
         else:
             User.objects.create_user(username=username, email=email, password=password,
@@ -149,3 +165,15 @@ class AuthenticationResource(ModelResource):
             'username':user.username,
             'api_key': user.api_key.key
         })
+
+    def recover_password(self, request, **kwargs):
+        self.method_check(request, allowed=['post'])
+        data = self.deserialize(request, request.body,
+                                format=request.META.get('CONTENT_TYPE', 'application/join'))
+        email = data['email']
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise BadRequest("User with email %s not found" % email)
+        # Send Code to user email (InProgress.....)
+        return self.create_response(request, {'success': True})
