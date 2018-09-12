@@ -17,4 +17,3 @@ python-mimeparse==1.6.0
 pytz==2018.4
 six==1.11.0
 wrapt==1.10.11
-psycopg2==2.6.2
