@@ -76,16 +76,16 @@ WSGI_APPLICATION = 'todo_social_app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'dbjbhvcsolmnde',
-#         'USER': 'mmqzwfyotpusod',
-#         'PASSWORD': '98d6331f132df857cee2b4ae458e2b435df3bc8e12f3fce543bff51e77fcdcb3',
-#         'HOST': 'ec2-50-17-194-186.compute-1.amazonaws.com',
-#         'PORT': '5432',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'd863o9bbhtli70',
+        'USER': 'pnqqqcbxrgslyy',
+        'PASSWORD': '23b77a42db0a958568ed5ad55f9e265a1919fdb8abe7c061ebf23eb8fdb4f5d5',
+        'HOST': 'ec2-107-21-233-72.compute-1.amazonaws.com',
+        'PORT': '5432',
+    }
+}
 
 # DATABASES = {
 #     'default': {
@@ -97,12 +97,12 @@ WSGI_APPLICATION = 'todo_social_app.wsgi.application'
 #     }
 # }
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'todo-social',
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': 'todo-social',
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/2.0/ref/settings/#auth-password-validators
