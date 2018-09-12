@@ -12,7 +12,7 @@ from tastypie.authentication import Authentication, ApiKeyAuthentication
 from tastypie.exceptions import BadRequest
 from tastypie.utils import trailing_slash
 from tastypie import fields
-from .models import Profile
+from .models import Profile, Relationship
 from .authorization import UserObjectsOnlyAuthorization
 from .validation import UserProfileValidation
 
@@ -45,7 +45,6 @@ class ProfileResource(ModelResource):
         user.last_name = bundle.data['last_name']
         user.save()
         return super(ProfileResource, self).hydrate(bundle)
-
 
 
 class AuthenticationResource(ModelResource):
@@ -86,6 +85,13 @@ class AuthenticationResource(ModelResource):
 
         username = data.get('username', '')
         password = data.get('password', '')
+
+        # Valdate username
+        if bool(re.match(r'^[\w.@+-]+$', username)) is False:
+            raise BadRequest('Username invalid')
+        # Validate password
+        validate_password(password)
+
         user = authenticate(username=username, password=password)
         if user:
             if user.is_active:
@@ -173,7 +179,46 @@ class AuthenticationResource(ModelResource):
         email = data['email']
         try:
             user = User.objects.get(email=email)
+ 
         except User.DoesNotExist:
             raise BadRequest("User with email %s not found" % email)
         # Send Code to user email (InProgress.....)
         return self.create_response(request, {'success': True})
+
+class RelationshipResource(ModelResource):
+    user_one = fields.ForeignKey(UserResource, attribute='user_one', full=True)
+    user_two = fields.ForeignKey(UserResource, attribute='user_two', full=True)
+    class Meta:
+        queryset = Relationship.objects.all()
+        resource_name = 'relationship'
+        authentication = ApiKeyAuthentication()
+        authorization = Authorization()
+        always_return_data = True
+        include_resource_uri = False
+
+
+# class AuthenticationResource2(ModelResource):
+#     class Meta:
+#         queryset = User.objects.all()
+#         excludes = ['password', 'is_superuser']
+#         allowed_methods = ['get', 'post']
+#         resource_name = 'test'
+#         authentication = ApiKeyAuthentication()
+#         authorization = Authorization()
+#         always_return_data = True
+
+#     def prepend_urls(self):
+#         return [
+#             # sign_in
+#             url(r"^(?P<resource_name>%s)/sign_in%s$" %
+#                 (self._meta.resource_name, trailing_slash()),
+#                 self.wrap_view('sign_in'), name="api_sign_in")
+#         ]
+
+#     def sign_in(self, request, **kwargs):
+#         print(request.user)
+#         print(request.username)
+#         return self.create_response(request, {
+#             'success': False,
+#             'reason': 'incorrect',
+#         }, HttpUnauthorized)

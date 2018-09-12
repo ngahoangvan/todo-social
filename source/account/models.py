@@ -33,4 +33,8 @@ class Relationship(models.Model):
                                  on_delete=models.CASCADE,
                                  related_name='user_two')
     status = models.IntegerField(choices=STATUS_IN_RELATIONSHIP, default=0)
-    action_user_id = models.IntegerField()
+
+    def __str__(self):
+        return '%s %s to %s' % (self.user_one.get_full_name(),
+                                self.get_status_display(),
+                                self.user_two.get_full_name())

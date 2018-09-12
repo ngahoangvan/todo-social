@@ -1,0 +1,1 @@
+web: gunicorn todo_social_app.wsgi
