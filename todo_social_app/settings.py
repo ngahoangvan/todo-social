@@ -23,8 +23,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'pzzw2utk%y16k=5i@phjsy6wjhb4zu+5b9s672!l6tz5%%#!oa'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-# DEBUG = False
+# DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -76,26 +76,26 @@ WSGI_APPLICATION = 'todo_social_app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'd863o9bbhtli70',
-        'USER': 'pnqqqcbxrgslyy',
-        'PASSWORD': '23b77a42db0a958568ed5ad55f9e265a1919fdb8abe7c061ebf23eb8fdb4f5d5',
-        'HOST': 'ec2-107-21-233-72.compute-1.amazonaws.com',
-        'PORT': '5432',
-    }
-}
-
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'todo-social',
-#         'USER': 'postgres',
-#         'PASSWORD': '123123',
-#         'HOST': '',
+#         'NAME': 'd863o9bbhtli70',
+#         'USER': 'pnqqqcbxrgslyy',
+#         'PASSWORD': '23b77a42db0a958568ed5ad55f9e265a1919fdb8abe7c061ebf23eb8fdb4f5d5',
+#         'HOST': 'ec2-107-21-233-72.compute-1.amazonaws.com',
+#         'PORT': '5432',
 #     }
 # }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'todo-social',
+        'USER': 'postgres',
+        'PASSWORD': '123123',
+        'HOST': '',
+    }
+}
 
 # DATABASES = {
 #     'default': {
@@ -141,4 +141,5 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+STATIC_ROOT = os.path.join(PROJECT_ROOT, 'static')
