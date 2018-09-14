@@ -39,6 +39,13 @@ class ProfileResource(ModelResource):
         authentication = ApiKeyAuthentication()
         authorization = UserObjectsOnlyAuthorization()
 
+    # def dehydrate(self, bundle):
+    #     bundle.data['user_id'] = bundle.obj.user.id
+    #     bundle.data['username'] = bundle.obj.user.username
+    #     bundle.data['first_name'] = bundle.obj.user.first_name
+    #     bundle.data['last_name'] = bundle.obj.user.last_name
+    #     return bundle
+
     def hydrate_user(self, bundle):
         user = User.objects.get(id=bundle.obj.user_id)
         user.first_name = bundle.data['first_name']
@@ -89,6 +96,15 @@ class AuthenticationResource(ModelResource):
         # Valdate username
         if bool(re.match(r'^[\w.@+-]+$', username)) is False:
             raise BadRequest('Username invalid')
+
+        match = re.match('^[_a-z0-9-]+(\\.[_a-z0-9-]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,4})$', username)
+        if match is not None:
+            if User.objects.filter(email=username).exists():
+                user = User.objects.get(email=username)
+                username = user.username
+            else:
+                raise BadRequest('You sign in by email, but email is not exist')
+                
         # Validate password
         validate_password(password)
 
@@ -100,7 +116,7 @@ class AuthenticationResource(ModelResource):
                     'success': True,
                     'id':user.id,
                     'username':user.username,
-                    'api_key': user.api_key.key
+                    'api_key': user.api_key.key      
                 })
             else:
                 return self.create_response(request, {

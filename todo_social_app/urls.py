@@ -17,6 +17,8 @@ from django.contrib import admin
 from django.conf.urls import include, url
 from tastypie.api import Api
 from source.account.apis import AuthenticationResource, ProfileResource, RelationshipResource
+from source.post.apis import PostResource
+
 
 v1_api = Api(api_name='v1')
 
@@ -24,6 +26,9 @@ v1_api = Api(api_name='v1')
 v1_api.register(AuthenticationResource())
 v1_api.register(ProfileResource())
 v1_api.register(RelationshipResource())
+
+# Api for Post
+v1_api.register(PostResource())
 
 
 urlpatterns = [
