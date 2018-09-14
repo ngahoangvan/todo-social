@@ -96,14 +96,14 @@ class AuthenticationResource(ModelResource):
         # Valdate username
         if bool(re.match(r'^[\w.@+-]+$', username)) is False:
             raise BadRequest('Username invalid')
-
+        # Sign in by email
         match = re.match('^[_a-z0-9-]+(\\.[_a-z0-9-]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,4})$', username)
         if match is not None:
             if User.objects.filter(email=username).exists():
                 user = User.objects.get(email=username)
                 username = user.username
             else:
-                raise BadRequest('You sign in by email, but email is not exist')
+                raise BadRequest('You were sign in by email, but email is not exist')
                 
         # Validate password
         validate_password(password)
