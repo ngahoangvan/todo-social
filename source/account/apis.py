@@ -19,8 +19,7 @@ from .validation import UserProfileValidation
 class UserResource(ModelResource):
     class Meta:
         queryset = User.objects.all()
-        fields = ['id', 'username', 'first_name', 'last_name']
-        excludes = ['email', 'password', 'is_superuser']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email']
         resource_name = 'auth/users'
         include_resource_uri = False
         authentication = ApiKeyAuthentication()
