@@ -15,6 +15,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.conf.urls import include, url
+from django.conf import settings
+from django.conf.urls.static import static
 from tastypie.api import Api
 from source.account.apis import AuthenticationResource, ProfileResource, RelationshipResource
 from source.post.apis import PostResource
@@ -34,4 +36,4 @@ v1_api.register(PostResource())
 urlpatterns = [
     url(r'admin/', admin.site.urls),
     url(r'api/', include(v1_api.urls))
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
