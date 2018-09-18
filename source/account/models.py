@@ -8,12 +8,12 @@ signals.post_save.connect(create_api_key, sender=User)
 
 
 class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True)
     other_name = models.CharField(max_length=255, blank=True)
     birthday = models.DateField(null=True, blank=True)
     address = models.CharField(max_length=255, blank=True)
     phone_number = models.CharField(max_length=255, blank=True)
     photo_url = models.CharField(max_length=255, blank=True)
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.user.get_full_name()

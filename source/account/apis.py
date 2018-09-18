@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import validate_email
-from tastypie.resources import ModelResource
+from tastypie.resources import ModelResource, ALL
 from tastypie.http import HttpUnauthorized, HttpForbidden
 from tastypie.authorization import Authorization
 from tastypie.authentication import Authentication, ApiKeyAuthentication
@@ -16,41 +16,42 @@ from .models import Profile, Relationship
 from .authorization import UserObjectsOnlyAuthorization
 from .validation import UserProfileValidation
 
-class UserResource(ModelResource):
-    class Meta:
-        queryset = User.objects.all()
-        fields = ['id', 'username', 'first_name', 'last_name', 'email']
-        resource_name = 'auth/users'
-        include_resource_uri = False
-        authentication = ApiKeyAuthentication()
-        authorization = Authorization()
-
 
 class ProfileResource(ModelResource):
-    user = fields.ForeignKey(UserResource, attribute='user', full=True)
-
     class Meta:
         queryset = Profile.objects.all()
         resource_name = 'user-profile'
         fields = ['id', 'other_name', 'birthday', 'address', 'phone_number',
-                  'photo_url', 'user']
+                  'photo_url']
+        include_resource_uri = False
+        authentication = ApiKeyAuthentication()
+        authorization = Authorization()
+        ordering = ['id']
+
+
+class UserResource(ModelResource):
+    profile = fields.ForeignKey(ProfileResource, attribute='profile', full=True)
+    class Meta:
+        queryset = User.objects.all()
+        fields = ['id', 'username', 'first_name', 'last_name', 'email','profile']
+        resource_name = 'auth/users'
+        filtering = {
+            'slug': ALL,
+            'username': ALL,
+        }
         include_resource_uri = False
         authentication = ApiKeyAuthentication()
         authorization = UserObjectsOnlyAuthorization()
 
-    # def dehydrate(self, bundle):
-    #     bundle.data['user_id'] = bundle.obj.user.id
-    #     bundle.data['username'] = bundle.obj.user.username
-    #     bundle.data['first_name'] = bundle.obj.user.first_name
-    #     bundle.data['last_name'] = bundle.obj.user.last_name
-    #     return bundle
-
-    def hydrate_user(self, bundle):
-        user = User.objects.get(id=bundle.obj.user_id)
-        user.first_name = bundle.data['first_name']
-        user.last_name = bundle.data['last_name']
-        user.save()
-        return super(ProfileResource, self).hydrate(bundle)
+    def hydrate_profile(self, bundle):
+        profile = Profile.objects.get(user_id=bundle.obj.id)
+        profile.other_name = bundle.data['other_name']
+        profile.birthday = bundle.data['birthday']
+        profile.address = bundle.data['address']
+        profile.phone_number = bundle.data['phone_number']
+        profile.photo_url = bundle.data['photo_url']
+        profile.save()
+        return super(UserResource, self).hydrate(bundle)
 
 
 class AuthenticationResource(ModelResource):
@@ -211,29 +212,38 @@ class RelationshipResource(ModelResource):
         always_return_data = True
         include_resource_uri = False
 
-
-# class AuthenticationResource2(ModelResource):
-#     class Meta:
-#         queryset = User.objects.all()
-#         excludes = ['password', 'is_superuser']
-#         allowed_methods = ['get', 'post']
-#         resource_name = 'test'
-#         authentication = ApiKeyAuthentication()
-#         authorization = Authorization()
-#         always_return_data = True
-
-#     def prepend_urls(self):
-#         return [
-#             # sign_in
-#             url(r"^(?P<resource_name>%s)/sign_in%s$" %
-#                 (self._meta.resource_name, trailing_slash()),
-#                 self.wrap_view('sign_in'), name="api_sign_in")
-#         ]
-
-#     def sign_in(self, request, **kwargs):
-#         print(request.user)
-#         print(request.username)
-#         return self.create_response(request, {
-#             'success': False,
-#             'reason': 'incorrect',
-#         }, HttpUnauthorized)
+    def prepend_urls(self):
+        return [
+            # Sending Request
+            url(r"^(?P<resource_name>%s)/(?P<user_id>[\w\d_.-]+)/(?P<relationship>[\w\d_.-]+)/$" %
+                (self._meta.resource_name),
+                self.wrap_view('send_request'), name="api_send_request"),
+        ]
+# api/v1/users/1/friend_request/
+    def send_request(self, request, **kwargs):
+        self.method_check(request, allowed=['post'])
+        user_one_id = request.user.id
+        if user_one_id is None:
+            raise BadRequest('Please signin first')
+        user_two_id = request.resolver_match.kwargs["user_id"]
+        status = request.resolver_match.kwargs["relationship"]
+        if status == 'pending':
+            status = 0
+        elif status == 'accepted':
+            status = 1
+        elif status == 'declined':
+            status = 2
+        elif status == 'blocked':
+            status = 3
+        else:
+            raise BadRequest('request is wrong')
+        rela = Relationship.objects.filter(user_one_id=user_one_id).filter(user_two_id=user_two_id)
+        if rela.exists():
+            new_rela = rela.get(user_one_id=user_one_id)
+            new_rela.status = status
+            new_rela.save()
+        else:
+            Relationship.objects.create(user_one_id=user_one_id, user_two_id=user_two_id)
+        return self.create_response(request, {
+            'success': True
+        })

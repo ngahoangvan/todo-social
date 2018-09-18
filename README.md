@@ -88,3 +88,20 @@ User Profile
     }
     - If success: Status 204
     - Else, return error
+
+* To see single profile(GET): http://127.0.0.1:8000/api/v1/user-profile/{id}/?username={username}&api_key={api_key}
+
+    {
+        "email": "quangthao13@gmail.com",
+        "first_name": "Huỳnh Quang",
+        "id": 2,
+        "last_name": "Thảo",
+        "profile": {
+            "address": "Đà Nẵng",
+            "birthday": "1997-06-21",
+            "other_name": "Best Android in the World",
+            "phone_number": "0123456789",
+            "photo_url": ""
+        },
+        "username": "quangthao"
+    }

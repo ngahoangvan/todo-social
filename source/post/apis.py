@@ -5,8 +5,9 @@ from tastypie.authorization import Authorization
 from tastypie.authentication import Authentication, ApiKeyAuthentication
 from tastypie.exceptions import BadRequest
 from tastypie import fields
-from .models import Post
 from source.account.apis import UserResource
+from .models import Post, Like, Comment
+from .authorization import UserPostObjectsOnlyAuthorization
 
 class PostResource(ModelResource):
     author = fields.ForeignKey(UserResource, 'author', full=True)
@@ -17,9 +18,9 @@ class PostResource(ModelResource):
         allowed_methods = ['get']
         include_resource_uri = False
         authentication = ApiKeyAuthentication()
-        authorization = Authorization()
+        authorization = UserPostObjectsOnlyAuthorization()
         always_return_data = True
-        order_by = ['id']
+        ordering = ['id']
 
     def prepend_urls(self):
         return [
@@ -27,14 +28,23 @@ class PostResource(ModelResource):
                 self.wrap_view('dispatch_list'), name="api_dispatch_list"),
         ]
 
-    def dispatch_list(self, request, **kwargs):
-        name = request.resolver_match.kwargs["name"]
-        user = User.objects.get(username=name)
-        # print(self.get_list(request, **kwargs))
-        print(request)
-        return self.get_list(request, **kwargs)
 
-    # def authorized_read_list(self, object_list, bundle):
-    #     name = bundle.request.resolver_match.kwargs["name"]
-    #     user = User.objects.get(username=name)
-    #     return object_list.filter(author=user).select_related()
+class LikeResource(ModelResource):
+
+    class Meta:
+        queryset = Like.objects.all()
+        resource_name = 'likes'
+        include_resource_uri = False
+        authentication = ApiKeyAuthentication()
+        authorization = Authorization()
+        always_return_data = True
+
+
+class CommentResource(ModelResource):
+    class Meta:
+        queryset = Comment.objects.all()
+        resource_name = 'comments'
+        include_resource_uri = False
+        authentication = ApiKeyAuthentication()
+        authorization = Authorization()
+        always_return_data = True

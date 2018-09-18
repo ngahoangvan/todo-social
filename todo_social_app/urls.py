@@ -18,15 +18,15 @@ from django.conf.urls import include, url
 from django.conf import settings
 from django.conf.urls.static import static
 from tastypie.api import Api
-from source.account.apis import AuthenticationResource, ProfileResource, RelationshipResource
+from source.account.apis import AuthenticationResource, RelationshipResource, UserResource
 from source.post.apis import PostResource
 
 
 v1_api = Api(api_name='v1')
 
 # Api for User
+v1_api.register(UserResource())
 v1_api.register(AuthenticationResource())
-v1_api.register(ProfileResource())
 v1_api.register(RelationshipResource())
 
 # Api for Post
