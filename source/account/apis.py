@@ -3,7 +3,6 @@ from django.conf.urls import url
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import validate_email
 from tastypie.resources import ModelResource, ALL
 from tastypie.http import HttpUnauthorized, HttpForbidden
@@ -33,7 +32,7 @@ class UserResource(ModelResource):
     profile = fields.ForeignKey(ProfileResource, attribute='profile', full=True)
     class Meta:
         queryset = User.objects.all()
-        fields = ['id', 'username', 'first_name', 'last_name', 'email','profile']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'profile']
         resource_name = 'auth/users'
         filtering = {
             'slug': ALL,
@@ -104,7 +103,7 @@ class AuthenticationResource(ModelResource):
                 username = user.username
             else:
                 raise BadRequest('You were sign in by email, but email is not exist')
-                
+
         # Validate password
         validate_password(password)
 
@@ -116,7 +115,7 @@ class AuthenticationResource(ModelResource):
                     'success': True,
                     'id':user.id,
                     'username':user.username,
-                    'api_key': user.api_key.key      
+                    'api_key': user.api_key.key
                 })
             else:
                 return self.create_response(request, {
@@ -195,7 +194,6 @@ class AuthenticationResource(ModelResource):
         email = data['email']
         try:
             user = User.objects.get(email=email)
- 
         except User.DoesNotExist:
             raise BadRequest("User with email %s not found" % email)
         # Send Code to user email (InProgress.....)
@@ -215,35 +213,92 @@ class RelationshipResource(ModelResource):
     def prepend_urls(self):
         return [
             # Sending Request
-            url(r"^(?P<resource_name>%s)/(?P<user_id>[\w\d_.-]+)/(?P<relationship>[\w\d_.-]+)/$" %
+            url(r"^(?P<resource_name>%s)/(?P<pk>[\w\d_.-]+)/send_friends/$" %
                 (self._meta.resource_name),
                 self.wrap_view('send_request'), name="api_send_request"),
+            # Accept Request
+            url(r"^(?P<resource_name>%s)/(?P<pk>[\w\d_.-]+)/accept_friends/$" %
+                (self._meta.resource_name),
+                self.wrap_view('accept_request'), name="api_accept_request"),
+            # Unfriend Request
+            url(r"^(?P<resource_name>%s)/(?P<pk>[\w\d_.-]+)/un_friends/$" %
+                (self._meta.resource_name),
+                self.wrap_view('unfriends_request'), name="api_unfriends_request"),
+            # Block Request
+            url(r"^(?P<resource_name>%s)/(?P<pk>[\w\d_.-]+)/block_friends/$" %
+                (self._meta.resource_name),
+                self.wrap_view('block_request'), name="api_block_request"),
         ]
-# api/v1/users/1/friend_request/
+
     def send_request(self, request, **kwargs):
         self.method_check(request, allowed=['post'])
         user_one_id = request.user.id
         if user_one_id is None:
             raise BadRequest('Please signin first')
-        user_two_id = request.resolver_match.kwargs["user_id"]
-        status = request.resolver_match.kwargs["relationship"]
-        if status == 'pending':
-            status = 0
-        elif status == 'accepted':
-            status = 1
-        elif status == 'declined':
-            status = 2
-        elif status == 'blocked':
-            status = 3
-        else:
-            raise BadRequest('request is wrong')
+        # user_two_id = request.GET["pk"]
+        user_two_id = request.resolver_match.kwargs["pk"]
+        # Check current relationship
         rela = Relationship.objects.filter(user_one_id=user_one_id).filter(user_two_id=user_two_id)
-        if rela.exists():
-            new_rela = rela.get(user_one_id=user_one_id)
-            new_rela.status = status
+        reverse_rela = Relationship.objects.filter(user_one_id=user_two_id).filter(user_two_id=user_one_id)
+        if rela.filter(status=0).exists():
+            raise BadRequest('You were send request to this user')
+        if rela.filter(status=2).exists():
+            new_rela = rela.filter(status=2).get(user_one_id=user_one_id)
+            new_rela.status = 0
             new_rela.save()
+        elif reverse_rela.filter(status=1):
+            raise BadRequest("You and this user are friends ")
+        elif reverse_rela.filter(status=3):
+            raise BadRequest("You can't send request to this user")
         else:
             Relationship.objects.create(user_one_id=user_one_id, user_two_id=user_two_id)
+        return self.create_response(request, {
+            'success': True
+        })
+
+    def accept_request(self, request, **kwargs):
+        self.method_check(request, allowed=['post'])
+        user_one_id = request.user.id
+        if user_one_id is None:
+            raise BadRequest('Please signin first')
+        user_two_id = request.resolver_match.kwargs["pk"]
+        reverse_rela = Relationship.objects.filter(user_one_id=user_two_id).filter(user_two_id=user_one_id)
+        if reverse_rela.filter(status=0).exists():
+            new_rela = reverse_rela.get(status=0)
+            new_rela.status = 1
+            new_rela.is_friends = True
+            new_rela.save()
+        elif reverse_rela.filter(status=1).exists():
+            raise BadRequest('You and this user is friends')
+        else:
+            raise BadRequest('You can accept this request')
+        # elif reverse_rela.filter(status=3).exists():
+        #     raise BadRequest('You were block this user')
+        return self.create_response(request, {
+            'success': True
+        })
+
+    def unfriends_request(self, request, **kwargs):
+        self.method_check(request, allowed=['post'])
+        user_one_id = request.user.id
+        if user_one_id is None:
+            raise BadRequest('Please signin first')
+        user_two_id = request.resolver_match.kwargs["pk"]
+        reverse_rela = Relationship.objects.filter(user_one_id=user_two_id).filter(user_two_id=user_one_id)
+        if reverse_rela.filter(status=0).exists():
+            new_rela = reverse_rela.get(status=0)
+            new_rela.status = 2
+            new_rela.is_friends = True
+            new_rela.save()
+        elif reverse_rela.filter(status=1).exists():
+            new_rela = reverse_rela.get(status=1)
+            new_rela.status = 2
+            new_rela.is_friends = True
+            new_rela.save()
+        else:
+            raise BadRequest('You can accept this request')
+        # elif reverse_rela.filter(status=3).exists():
+        #     raise BadRequest('You were block this user')
         return self.create_response(request, {
             'success': True
         })

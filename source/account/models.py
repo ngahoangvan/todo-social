@@ -21,9 +21,9 @@ class Profile(models.Model):
 
 class Relationship(models.Model):
     STATUS_IN_RELATIONSHIP = (
-        (0, 'pending'),
+        (0, 'sending'),
         (1, 'accepted'),
-        (2, 'declined'),
+        (2, 'unfriend'),
         (3, 'blocked'),
     )
     user_one = models.ForeignKey(User,
@@ -33,8 +33,9 @@ class Relationship(models.Model):
                                  on_delete=models.CASCADE,
                                  related_name='user_two')
     status = models.IntegerField(choices=STATUS_IN_RELATIONSHIP, default=0)
+    is_friends = models.BooleanField(default=False)
 
     def __str__(self):
-        return '%s %s to %s' % (self.user_one.get_full_name(),
-                                self.get_status_display(),
-                                self.user_two.get_full_name())
+        return '%s and %s: %s' % (self.user_one.get_full_name(),
+                                  self.user_two.get_full_name(),
+                                  self.get_status_display())
