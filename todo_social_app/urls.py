@@ -18,9 +18,16 @@ from django.conf.urls import include, url
 from django.conf import settings
 from django.conf.urls.static import static
 from tastypie.api import Api
-from source.account.apis import AuthenticationResource, RelationshipResource, UserResource
-from source.post.apis import PostResource
-
+from source.account.apis import (
+    AuthenticationResource,
+    RelationshipResource,
+    UserResource,
+)
+from source.post.apis import (
+    PostResource,
+    LikeResource,
+    CommentResource
+)
 
 v1_api = Api(api_name='v1')
 
@@ -31,6 +38,8 @@ v1_api.register(RelationshipResource())
 
 # Api for Post
 v1_api.register(PostResource())
+v1_api.register(LikeResource())
+v1_api.register(CommentResource())
 
 
 urlpatterns = [

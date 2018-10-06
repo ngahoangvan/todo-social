@@ -25,7 +25,6 @@ class ProfileResource(ModelResource):
         include_resource_uri = False
         authentication = ApiKeyAuthentication()
         authorization = Authorization()
-        ordering = ['id']
 
 
 class UserResource(ModelResource):
@@ -34,6 +33,7 @@ class UserResource(ModelResource):
         queryset = User.objects.all()
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'profile']
         resource_name = 'auth/users'
+        allowed_methods = ['get', 'post', 'put', 'patch', 'delete']
         filtering = {
             'slug': ALL,
             'username': ALL,
@@ -41,6 +41,7 @@ class UserResource(ModelResource):
         include_resource_uri = False
         authentication = ApiKeyAuthentication()
         authorization = UserObjectsOnlyAuthorization()
+
 
     def hydrate_profile(self, bundle):
         profile = Profile.objects.get(user_id=bundle.obj.id)
@@ -238,8 +239,12 @@ class RelationshipResource(ModelResource):
         # user_two_id = request.GET["pk"]
         user_two_id = request.resolver_match.kwargs["pk"]
         # Check current relationship
-        rela = Relationship.objects.filter(user_one_id=user_one_id).filter(user_two_id=user_two_id)
-        reverse_rela = Relationship.objects.filter(user_one_id=user_two_id).filter(user_two_id=user_one_id)
+        rela = Relationship.objects \
+               .filter(user_one_id=user_one_id) \
+               .filter(user_two_id=user_two_id)
+        reverse_rela = Relationship.objects \
+                       .filter(user_one_id=user_two_id) \
+                       .filter(user_two_id=user_one_id)
         if rela.filter(status=0).exists():
             raise BadRequest('You were send request to this user')
         if rela.filter(status=2).exists():
@@ -262,9 +267,11 @@ class RelationshipResource(ModelResource):
         if user_one_id is None:
             raise BadRequest('Please signin first')
         user_two_id = request.resolver_match.kwargs["pk"]
-        reverse_rela = Relationship.objects.filter(user_one_id=user_two_id).filter(user_two_id=user_one_id)
-        if reverse_rela.filter(status=0).exists():
-            new_rela = reverse_rela.get(status=0)
+        reverse_rela = Relationship.objects \
+                       .filter(user_one_id=user_two_id) \
+                       .filter(user_two_id=user_one_id)
+        if reverse_rela.filter(status=0).exists() or reverse_rela.filter(status=3).exists():
+            new_rela = reverse_rela.get(user_one_id=user_two_id)
             new_rela.status = 1
             new_rela.is_friends = True
             new_rela.save()
@@ -272,8 +279,6 @@ class RelationshipResource(ModelResource):
             raise BadRequest('You and this user is friends')
         else:
             raise BadRequest('You can accept this request')
-        # elif reverse_rela.filter(status=3).exists():
-        #     raise BadRequest('You were block this user')
         return self.create_response(request, {
             'success': True
         })
@@ -284,21 +289,34 @@ class RelationshipResource(ModelResource):
         if user_one_id is None:
             raise BadRequest('Please signin first')
         user_two_id = request.resolver_match.kwargs["pk"]
-        reverse_rela = Relationship.objects.filter(user_one_id=user_two_id).filter(user_two_id=user_one_id)
-        if reverse_rela.filter(status=0).exists():
-            new_rela = reverse_rela.get(status=0)
+        reverse_rela = Relationship.objects \
+                       .filter(user_one_id=user_two_id) \
+                       .filter(user_two_id=user_one_id)
+        if reverse_rela.filter(status=0).exists() or reverse_rela.filter(status=1).exists():
+            new_rela = reverse_rela.get(user_one_id=user_two_id)
             new_rela.status = 2
-            new_rela.is_friends = True
-            new_rela.save()
-        elif reverse_rela.filter(status=1).exists():
-            new_rela = reverse_rela.get(status=1)
-            new_rela.status = 2
-            new_rela.is_friends = True
+            new_rela.is_friends = False
             new_rela.save()
         else:
             raise BadRequest('You can accept this request')
-        # elif reverse_rela.filter(status=3).exists():
-        #     raise BadRequest('You were block this user')
         return self.create_response(request, {
             'success': True
         })
+
+    def block_request(self, request, **kwargs):
+        self.method_check(request, allowed=['post'])
+        user_one_id = request.user.id
+        if user_one_id is None:
+            raise BadRequest('Please signin first')
+        user_two_id = request.resolver_match.kwargs["pk"]
+        rela = Relationship.objects \
+               .filter(user_one_id=user_one_id) \
+               .filter(user_two_id=user_two_id)
+        if rela.filter(status=3).exists():
+            raise BadRequest('You were block this user')
+        else:
+            new_rela = rela.get(user_one_id=user_one_id)
+            new_rela.status = 3
+            new_rela.is_friends = False
+            new_rela.save()
+        
