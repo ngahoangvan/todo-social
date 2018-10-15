@@ -8,9 +8,10 @@ from tastypie.resources import ModelResource, ALL
 from tastypie.http import HttpUnauthorized, HttpForbidden
 from tastypie.authorization import Authorization
 from tastypie.authentication import Authentication, ApiKeyAuthentication
-from tastypie.exceptions import BadRequest
+# from tastypie.exceptions import BadRequest
 from tastypie.utils import trailing_slash
 from tastypie import fields
+from ..commons.custom_exception import CustomBadRequest
 from .models import Profile, Relationship
 from .authorization import UserObjectsOnlyAuthorization
 from .validation import UserProfileValidation
@@ -95,7 +96,7 @@ class AuthenticationResource(ModelResource):
 
         # Valdate username
         if bool(re.match(r'^[\w.@+-]+$', username)) is False:
-            raise BadRequest('Username invalid')
+            raise CustomBadRequest(error_message='Username invalid')
         # Sign in by email
         match = re.match('^[_a-z0-9-]+(\\.[_a-z0-9-]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,4})$', username)
         if match is not None:
@@ -103,8 +104,9 @@ class AuthenticationResource(ModelResource):
                 user = User.objects.get(email=username)
                 username = user.username
             else:
-                raise BadRequest('You were sign in by email, but email is not exist')
-
+                raise CustomBadRequest(error_type='UNAUTHORIZED',
+                                       error_message='You were sign in by email,\
+                                       but email is not exist')
         # Validate password
         validate_password(password)
 
@@ -137,7 +139,8 @@ class AuthenticationResource(ModelResource):
             return self.create_response(request, {'success': True})
         else:
             return self.create_response(request, {'success': False,
-                                                  'error_message': 'You are not authenticated, %s' % request.user.is_authenticated})
+                                                  'error_message': 'You are \
+                                                  not authenticated, %s' % request.user.is_authenticated})
 
     def sign_up(self, request, **kwargs):
         self.method_check(request, allowed=['post'])
@@ -159,9 +162,9 @@ class AuthenticationResource(ModelResource):
 
         # Valdate username
         if bool(re.match(r'^[\w.@+-]+$', username)) is False:
-            raise BadRequest('Username invalid')
+            raise CustomBadRequest(error_message='Username invalid')
         elif User.objects.filter(username=username).exists():
-            raise BadRequest('Username already exists')
+            raise CustomBadRequest(error_type='DUPLICATE_VALUE', error_message='Username already exists')
 
         # Validate password
         validate_password(password)
@@ -169,17 +172,20 @@ class AuthenticationResource(ModelResource):
         # Validate email
         validate_email(email)
         if User.objects.filter(email=email).exists():
-            raise BadRequest('This email already has been registered by another account')
+            raise CustomBadRequest(error_type='DUPLICATE_VALUE',
+                                   error_message='This email already \
+                                   has been registered by another account')
         else:
             User.objects.create_user(username=username, email=email, password=password,
                                      first_name=first_name, last_name=last_name)
             user = authenticate(username=username, password=password)
             login(request, user)
             if user is not None:
-                Profile.objects.create(user_id=user.id, other_name=other_name, address=address,
-                                       birthday=birthday, phone_number=phone_number, photo_url=photo_url)
+                Profile.objects.create(user_id=user.id, other_name=other_name,
+                                       address=address, birthday=birthday,
+                                       phone_number=phone_number, photo_url=photo_url)
             else:
-                raise BadRequest("Can't create userprofile")
+                raise CustomBadRequest(error_message="Can't create userprofile")
 
         return self.create_response(request, {
             'success': True,
@@ -194,9 +200,10 @@ class AuthenticationResource(ModelResource):
                                 format=request.META.get('CONTENT_TYPE', 'application/join'))
         email = data['email']
         try:
-            user = User.objects.get(email=email)
+            User.objects.get(email=email)
         except User.DoesNotExist:
-            raise BadRequest("User with email %s not found" % email)
+            raise CustomBadRequest(error_type='DOES_NOT_EXITS',
+                                   error_message="User with email %s not found" % email)
         # Send Code to user email (InProgress.....)
         return self.create_response(request, {'success': True})
 
@@ -235,7 +242,8 @@ class RelationshipResource(ModelResource):
         self.method_check(request, allowed=['post'])
         user_one_id = request.user.id
         if user_one_id is None:
-            raise BadRequest('Please signin first')
+            raise CustomBadRequest(error_type='UNAUTHORIZED',
+                                   error_message='Please signin first')
         # user_two_id = request.GET["pk"]
         user_two_id = request.resolver_match.kwargs["pk"]
         # Check current relationship
@@ -246,15 +254,17 @@ class RelationshipResource(ModelResource):
                        .filter(user_one_id=user_two_id) \
                        .filter(user_two_id=user_one_id)
         if rela.filter(status=0).exists():
-            raise BadRequest('You were send request to this user')
+            raise CustomBadRequest(error_type='DOES_NOT_EXITS',
+                                   error_message='You were send request to this user')
         if rela.filter(status=2).exists():
             new_rela = rela.filter(status=2).get(user_one_id=user_one_id)
             new_rela.status = 0
             new_rela.save()
         elif reverse_rela.filter(status=1):
-            raise BadRequest("You and this user are friends ")
+            raise CustomBadRequest(error_message="You and this user are friends ")
         elif reverse_rela.filter(status=3):
-            raise BadRequest("You can't send request to this user")
+            raise CustomBadRequest(error_type='UNAUTHORIZED',
+                                   error_message="You can't send request to this user")
         else:
             Relationship.objects.create(user_one_id=user_one_id, user_two_id=user_two_id)
         return self.create_response(request, {
@@ -265,7 +275,8 @@ class RelationshipResource(ModelResource):
         self.method_check(request, allowed=['post'])
         user_one_id = request.user.id
         if user_one_id is None:
-            raise BadRequest('Please signin first')
+            raise CustomBadRequest(error_type='UNAUTHORIZED',
+                                   error_message='Please signin first')
         user_two_id = request.resolver_match.kwargs["pk"]
         reverse_rela = Relationship.objects \
                        .filter(user_one_id=user_two_id) \
@@ -276,9 +287,9 @@ class RelationshipResource(ModelResource):
             new_rela.is_friends = True
             new_rela.save()
         elif reverse_rela.filter(status=1).exists():
-            raise BadRequest('You and this user is friends')
+            raise CustomBadRequest(error_message='You and this user is friends')
         else:
-            raise BadRequest('You can accept this request')
+            raise CustomBadRequest(error_message='You can not accept this request')
         return self.create_response(request, {
             'success': True
         })
@@ -287,7 +298,8 @@ class RelationshipResource(ModelResource):
         self.method_check(request, allowed=['post'])
         user_one_id = request.user.id
         if user_one_id is None:
-            raise BadRequest('Please signin first')
+            raise CustomBadRequest(error_type='UNAUTHORIZED',
+                                   error_message='Please signin first')
         user_two_id = request.resolver_match.kwargs["pk"]
         reverse_rela = Relationship.objects \
                        .filter(user_one_id=user_two_id) \
@@ -298,7 +310,7 @@ class RelationshipResource(ModelResource):
             new_rela.is_friends = False
             new_rela.save()
         else:
-            raise BadRequest('You can accept this request')
+            raise CustomBadRequest(error_message='You can not accept this request')
         return self.create_response(request, {
             'success': True
         })
@@ -307,13 +319,15 @@ class RelationshipResource(ModelResource):
         self.method_check(request, allowed=['post'])
         user_one_id = request.user.id
         if user_one_id is None:
-            raise BadRequest('Please signin first')
+            raise CustomBadRequest(error_type='UNAUTHORIZED',
+                                   error_message='Please signin first')
         user_two_id = request.resolver_match.kwargs["pk"]
         rela = Relationship.objects \
                .filter(user_one_id=user_one_id) \
                .filter(user_two_id=user_two_id)
         if rela.filter(status=3).exists():
-            raise BadRequest('You were block this user')
+            raise CustomBadRequest(error_type='INVALID_DATA',
+                                   error_message='You were block this user')
         else:
             new_rela = rela.get(user_one_id=user_one_id)
             new_rela.status = 3
