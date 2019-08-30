@@ -23,13 +23,9 @@ from source.account.apis import (
     RelationshipResource,
     UserResource,
 )
-from source.post.apis import (
-    PostResource,
-    LikeResource,
-    CommentResource
-)
+from source.post.apis import PostResource, LikeResource, CommentResource
 
-v1_api = Api(api_name='v1')
+v1_api = Api(api_name="v1")
 
 # Api for User
 v1_api.register(UserResource())
@@ -43,6 +39,6 @@ v1_api.register(CommentResource())
 
 
 urlpatterns = [
-    url(r'admin/', admin.site.urls),
-    url(r'api/', include(v1_api.urls))
+    url(r"admin/", admin.site.urls),
+    url(r"api/", include(v1_api.urls)),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
